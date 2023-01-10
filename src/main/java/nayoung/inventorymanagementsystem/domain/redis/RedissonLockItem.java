@@ -18,20 +18,25 @@ public class RedissonLockItem {
         this.itemService = itemService;
     }
 
-    public void decreaseQuantity(Long itemId, Long quantity) {
+    public Boolean decreaseQuantity(Long itemId, Long quantity) {
         RLock lock = redissonClient.getLock(generateKey(itemId));
+        boolean result = true;
         try {
             boolean available = lock.tryLock(10, 1, TimeUnit.SECONDS);
             if(!available) {
                 System.out.println("lock 획득 실패");
-                return;
+                return false;
             }
             itemService.decreaseQuantity(itemId, quantity);
+        } catch (IllegalArgumentException e) {
+            System.out.println("재고 부족");
+            result = false;
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
             lock.unlock();
         }
+        return result;
     }
 
     public String generateKey(Long key) {

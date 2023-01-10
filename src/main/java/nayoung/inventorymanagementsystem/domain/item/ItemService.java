@@ -18,7 +18,7 @@ public class ItemService {
     @Transactional
     public void decreaseQuantity(Long id, Long quantity) {
         Item item = itemRepository.findByIdWithPessimisticLock(id);
-        item.decreaseQuantity(quantity);
-        itemRepository.saveAndFlush(item);
+        if(!item.decreaseQuantity(quantity))
+            throw new IllegalArgumentException();
     }
 }
