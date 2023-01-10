@@ -14,7 +14,7 @@ public class ItemService {
         itemRepository.save(item);
     }
 
-    public void decreaseQuantity(Long id, Long quantity) {
+    public synchronized void decreaseQuantity(Long id, Long quantity) {
         Item item = itemRepository.findById(id).orElseThrow();
         item.decreaseQuantity(quantity);
         itemRepository.saveAndFlush(item);
