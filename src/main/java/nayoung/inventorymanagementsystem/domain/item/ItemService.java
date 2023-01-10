@@ -2,6 +2,7 @@ package nayoung.inventorymanagementsystem.domain.item;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -14,8 +15,9 @@ public class ItemService {
         itemRepository.save(item);
     }
 
-    public synchronized void decreaseQuantity(Long id, Long quantity) {
-        Item item = itemRepository.findById(id).orElseThrow();
+    @Transactional
+    public void decreaseQuantity(Long id, Long quantity) {
+        Item item = itemRepository.findByIdWithPessimisticLock(id);
         item.decreaseQuantity(quantity);
         itemRepository.saveAndFlush(item);
     }

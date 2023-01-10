@@ -20,7 +20,7 @@ public class OrderService {
     @Transactional
     public Boolean create(Long accountId, RequestOrder request) {
         Account account = accountRepository.findById(accountId).orElseThrow();
-        Item item = itemRepository.findById(request.itemId).orElseThrow();
+        Item item = itemRepository.findByIdWithPessimisticLock(request.itemId);
 
         if (!item.decreaseQuantity(request.count)) return false;
 
