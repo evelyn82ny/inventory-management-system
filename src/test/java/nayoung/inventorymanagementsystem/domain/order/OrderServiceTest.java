@@ -5,10 +5,7 @@ import nayoung.inventorymanagementsystem.domain.item.Item;
 import nayoung.inventorymanagementsystem.domain.item.ItemRepository;
 import nayoung.inventorymanagementsystem.domain.item.ItemService;
 import nayoung.inventorymanagementsystem.web.order.model.RequestOrder;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -44,7 +41,7 @@ class OrderServiceTest {
         ExecutorService executorService = Executors.newFixedThreadPool(10);
         CountDownLatch countDownLatch = new CountDownLatch(threadCount);
 
-        for (int i = 0; i < threadCount; i++) {
+        for (int i = 1; i <= threadCount; i++) {
             long accountId = i;
             executorService.submit(() -> {
                 try {
