@@ -125,6 +125,110 @@ X-Lock을 획득한 트랜잭션이 종료(commit or abort)해야 다른 트랜�
 
 <br>
 
+## Concurrency problem: Deadlock 발생
+
+멀티스레드 환경에서 발생하는 동시성 문제 중 하나인 Deadlock이 발생했다.
+
+![png](/_img/diagram.png)
+
+ORDER는 ACCOUNT와 ITEM을 FK로 참조하는 구조이다.
+
+> If a FOREIGN KEY constraint is defined on a table, any insert, update, or delete that requires the constraint condition to be checked sets shared record-level locks on the records that it looks at to check the constraint. InnoDB also sets these locks in the case where the constraint fails. - https://dev.mysql.com/doc/refman/5.6/en/innodb-locks-set.html
+
+FK를 가지고 있는 테이블이 INSERT, UPDATE 또는 DELETE 작업을 한다면 제약 조건을 확인하기 위해 FK로 참조하는 레코드에 S-Lock이 걸린다.
+<br>
+
+```java
+@Transactional
+public Boolean create(Long accountId, RequestOrder request) {
+    Account account = accountRepository.findById(accountId).orElseThrow();
+    Item item = itemRepository.findById(request.itemId).orElseThrow();
+
+    // 재고 감소
+    if (!item.decreaseQuantity(request.count)) return false;
+
+    // 재고 감소 성공하면 주문 생성
+    Order order = Order.builder()
+                .account(account)
+                .item(item)
+                .count(request.count)
+                .build();
+
+    // ORDER를 INSERT하면 FK로 참조하는 ACCOUNT와 ITEM 레코드에 S-LOCK이 걸린다.
+    orderRepository.save(order); 
+
+    account.increaseNumberOfOrders();
+    return true;
+}
+```
+ORDER 객체가 생성되었다는 것은 재고 감소에 성공했다는 의미이다. 그러므로 ORDER 객체가 INSERT되면 ITEM 객체도 재고 감소를 반영하기 위해 UPDATE 해야 한다. 
+ORDER 객체가 INSERT할 때 MySQL에서 제약 조건을 확인하기 위해 ITEM 객체에 S-Lock을 획득한다. S-Lock끼리는 호환 가능하다. 
+즉, 멀티스레드 환경에서 여러 트랜잭션이 동시에 ORDER 객체를 생성할 수 있다.
+<br>
+
+이제 ITEM 객체를 UPDATE하기 위해 X-Lock을 획득해야 한다. 멀티스레드 환경에서 테스트하면 모든 스레드가 같은 ITEM 레코드에 대해 S-Lock을 획득한 상태이다. 
+X-Lock을 획득하기 위해선 어떠한 락도 걸려있으면 안되는데 다른 세션에서 S-Lock을 획득한 상태이므로 S-Lock을 획득한 세션이 종료해야만 X-Lock을 획득할 수 있다. 
+하지만 멀티스레드 환경에서 테스트했기에 모든 트랜잭션이 같은 상태이다.
+다른 트랜잭션이 S-Lock을 반납하길 바라는데 자신도 같은 상태이므로 결국 X-Lock을 획득하기 못하는 Deadlock이 발생한다. 
+데드락이 발생한 테스트 코드는 다음 커밋에서 확인할 수 있다.
+<br>
+
+> commit: https://github.com/evelyn82ny/inventory-management-system/commit/db7cf746e9e420b07b8fb2580291a29c8c0cca46
+
+```text
+LATEST DETECTED DEADLOCK
+
+*** (1) TRANSACTION:
+TRANSACTION 20452, ACTIVE 0 sec starting index read
+mysql tables in use 1, locked 1
+LOCK WAIT 9 lock struct(s), heap size 1128, 4 row lock(s), undo log entries 2
+MySQL thread id 130, OS thread handle 281472028057536, query id 5089 172.17.0.1 root updating
+update item set quantity=3 where id=1
+
+*** (1) HOLDS THE LOCK(S):
+RECORD LOCKS space id 303 page no 4 n bits 72 index PRIMARY of table **inventory_management.item** trx id 20452 **lock mode S locks rec but not gap**
+Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
+0: len 8; hex 8000000000000001; asc ;;
+1: len 6; hex 000000004fcc; asc O ;;
+2: len 7; hex 01000001ca1aa5; asc ;;
+3: len 8; hex 8000000000000004; asc ;;
+
+*** (1) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 303 page no 4 n bits 72 index PRIMARY of table **inventory_management.item** trx id 20452 **lock_mode X locks rec but not gap waiting**
+Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
+0: len 8; hex 8000000000000001; asc ;;
+1: len 6; hex 000000004fcc; asc O ;;
+2: len 7; hex 01000001ca1aa5; asc ;;
+3: len 8; hex 8000000000000004; asc ;;
+
+*** (2) TRANSACTION:
+TRANSACTION 20455, ACTIVE 0 sec starting index read
+mysql tables in use 1, locked 1
+LOCK WAIT 9 lock struct(s), heap size 1128, 4 row lock(s), undo log entries 2
+MySQL thread id 137, OS thread handle 281471507963840, query id 5093 172.17.0.1 root updating
+update item set quantity=3 where id=1
+
+*** (2) HOLDS THE LOCK(S):
+RECORD LOCKS space id 303 page no 4 n bits 72 index PRIMARY of table **inventory_management.item** trx id 20455 **lock mode S locks rec but not gap**
+Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
+0: len 8; hex 8000000000000001; asc ;;
+1: len 6; hex 000000004fcc; asc O ;;
+2: len 7; hex 01000001ca1aa5; asc ;;
+3: len 8; hex 8000000000000004; asc ;;
+
+*** (2) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 303 page no 4 n bits 72 index PRIMARY of table **inventory_management.item** trx id 20455 **lock_mode X locks rec but not gap waiting**
+Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
+0: len 8; hex 8000000000000001; asc ;;
+1: len 6; hex 000000004fcc; asc O ;;
+2: len 7; hex 01000001ca1aa5; asc ;;
+3: len 8; hex 8000000000000004; asc ;;
+
+*** WE ROLL BACK TRANSACTION (2)
+```
+
+<br>
+
 ## Reference
 
 - Docker(MySQL):https://velog.io/@_nine/Docker-MySQL%EC%84%A4%EC%B9%98-%EB%B0%8F-%EC%A0%91%EC%86%8D%ED%95%98%EA%B8%B0
