@@ -81,6 +81,50 @@ public synchronized void decreaseQuantity(Long id, Long quantity) {
 
 <br>
 
+## Solution2: Pessimistic Lock
+
+Shared-Lock 또는 Exclustive-Lock 을 사용하며 다음과 같은 특징이 있다.
+
+- 같은 레코드에 대해 여러 트랜잭션은 Shared-Lock을 획득할 수 있다.
+- 같은 레코드에 대해 1개의 트랜잭션만 Exclusive-Lock을 획득할 수 있다.
+- Exclustive-Lock을 획득하기 위해선 다른 세션의 Shared-Lock과 Exclusive-Lock을 획득이 얻어야 한다.
+- 이미 Shared-Lock이 걸려있는 상태라면 Exclusive-Lock을 획득할 수 없다.
+- 이미 Exclusive-Lock이 걸려있는 상태라면 Shared-Lock 또는 Exclusive-Lock을 획득할 수 없다.
+
+```java
+public interface ItemRepository extends JpaRepository<Item, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select i from Item i where i.id=:id")
+    Item findByIdWithPessimisticLock(@Param("id") Long id);
+}
+```
+```java
+@Transactional
+public void decreaseQuantity(Long id, Long quantity) {
+    Item item = itemRepository.findByIdWithPessimisticLock(id);
+    item.decreaseQuantity(quantity);
+    itemRepository.saveAndFlush(item);
+}
+```
+
+> commit: https://github.com/evelyn82ny/inventory-management-system/commit/3c457e4c4985dcf98df2a9833e43f9ce33ca4772
+
+<br>
+
+위와 같이 작성하면 item 레코드를 가지고 오는 쿼리에 FOR UPDATE가 붙는다.
+X-Lock을 획득한 트랜잭션이 종료(commit or abort)해야 다른 트랜잭션이 락을 획득할 수 있으므로 동시성 문제를 해결할 수 있다.
+<br>
+
+하지만 또 다른 문제가 발생한다.
+이미 X-Lock을 걸려있는 상태에서 다른 세션도 수정 작업을 한다면 X-Lock을 획득하기 위해 기다리므로 위와 같은 방식으로 많은 요청을 처리한다면 응답 속도가 상당히 늦어질 것이다.
+
+> 실제로 기술 면접에서 *'동시성 문제를 해결했지만, 응답 속도가 늦어지는 것은 어떻게 해결할 것인가?'* 라는 질문을 많이 받았다. 
+> 그때 당시에도 응답 속도가 늦어진다는 문제를 인식하고 있었지만, 도저히 해결책을 찾을 수 없어서 대답하지 못했다. 
+> (슬프게도 지금까지 해결책을 찾는 중이다...😅)
+
+<br>
+
 ## Reference
 
 - Docker(MySQL):https://velog.io/@_nine/Docker-MySQL%EC%84%A4%EC%B9%98-%EB%B0%8F-%EC%A0%91%EC%86%8D%ED%95%98%EA%B8%B0
