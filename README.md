@@ -12,10 +12,12 @@
 
 ## Issue
 
-- ❗️[Concurrency Problem: Lost Update](#concurrency-problem-lost-update-)
-  - [Solution1: Java synchronized](#solution1-java-synchronized)
-  - [Solution2: Pessimistic Lock](#solution2-pessimistic-lock)
-- ❗️[Concurrency Problem: Deadlock](#concurrency-problem-deadlock-)
+### ❗️[Concurrency Problem: Lost Update](#concurrency-problem-lost-update-발생)
+ 
+- [Solution1: Java synchronized](#solution1-java-synchronized)
+- [Solution2: Pessimistic Lock](#solution2-pessimistic-lock)
+
+### ❗️[Concurrency Problem: Deadlock](#concurrency-problem-deadlock-발생)
 
 <br>
 
