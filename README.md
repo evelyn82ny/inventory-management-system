@@ -10,6 +10,13 @@
 - Docker Compose-based MySQL
 - JDK 11
 
+## Issue
+
+- ❗️[Concurrency Problem: Lost Update](#concurrency-problem-lost-update-)
+  - [Solution1: Java synchronized](#solution1-java-synchronized)
+  - [Solution2: Pessimistic Lock](#solution2-pessimistic-lock)
+- ❗️[Concurrency Problem: Deadlock](#concurrency-problem-deadlock-)
+
 <br>
 
 ## Transaction Isolation Level
@@ -133,7 +140,10 @@ X-Lock을 획득한 트랜잭션이 종료(commit or abort)해야 다른 트랜�
 
 ORDER는 ACCOUNT와 ITEM을 FK로 참조하는 구조이다.
 
-> If a FOREIGN KEY constraint is defined on a table, any insert, update, or delete that requires the constraint condition to be checked sets shared record-level locks on the records that it looks at to check the constraint. InnoDB also sets these locks in the case where the constraint fails. - https://dev.mysql.com/doc/refman/5.6/en/innodb-locks-set.html
+> If a FOREIGN KEY constraint is defined on a table, any insert, update, or delete 
+> that requires the constraint condition to be checked sets shared record-level locks on the records that it looks at to check the constraint. 
+> InnoDB also sets these locks in the case where the constraint fails.
+> https://dev.mysql.com/doc/refman/5.6/en/innodb-locks-set.html
 
 FK를 가지고 있는 테이블이 INSERT, UPDATE 또는 DELETE 작업을 한다면 제약 조건을 확인하기 위해 FK로 참조하는 레코드에 S-Lock이 걸린다.
 <br>
@@ -186,7 +196,8 @@ MySQL thread id 130, OS thread handle 281472028057536, query id 5089 172.17.0.1 
 update item set quantity=3 where id=1
 
 *** (1) HOLDS THE LOCK(S):
-RECORD LOCKS space id 303 page no 4 n bits 72 index PRIMARY of table **inventory_management.item** trx id 20452 **lock mode S locks rec but not gap**
+RECORD LOCKS space id 303 page no 4 n bits 72 index PRIMARY of table inventory_management.item trx id 20452 
+lock mode S locks rec but not gap
 Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
 0: len 8; hex 8000000000000001; asc ;;
 1: len 6; hex 000000004fcc; asc O ;;
@@ -194,7 +205,8 @@ Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
 3: len 8; hex 8000000000000004; asc ;;
 
 *** (1) WAITING FOR THIS LOCK TO BE GRANTED:
-RECORD LOCKS space id 303 page no 4 n bits 72 index PRIMARY of table **inventory_management.item** trx id 20452 **lock_mode X locks rec but not gap waiting**
+RECORD LOCKS space id 303 page no 4 n bits 72 index PRIMARY of table inventory_management.item trx id 20452 
+lock_mode X locks rec but not gap waiting
 Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
 0: len 8; hex 8000000000000001; asc ;;
 1: len 6; hex 000000004fcc; asc O ;;
@@ -209,7 +221,8 @@ MySQL thread id 137, OS thread handle 281471507963840, query id 5093 172.17.0.1 
 update item set quantity=3 where id=1
 
 *** (2) HOLDS THE LOCK(S):
-RECORD LOCKS space id 303 page no 4 n bits 72 index PRIMARY of table **inventory_management.item** trx id 20455 **lock mode S locks rec but not gap**
+RECORD LOCKS space id 303 page no 4 n bits 72 index PRIMARY of table inventory_management.item trx id 20455 
+lock mode S locks rec but not gap
 Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
 0: len 8; hex 8000000000000001; asc ;;
 1: len 6; hex 000000004fcc; asc O ;;
@@ -217,7 +230,8 @@ Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
 3: len 8; hex 8000000000000004; asc ;;
 
 *** (2) WAITING FOR THIS LOCK TO BE GRANTED:
-RECORD LOCKS space id 303 page no 4 n bits 72 index PRIMARY of table **inventory_management.item** trx id 20455 **lock_mode X locks rec but not gap waiting**
+RECORD LOCKS space id 303 page no 4 n bits 72 index PRIMARY of table inventory_management.item trx id 20455 
+lock_mode X locks rec but not gap waiting
 Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
 0: len 8; hex 8000000000000001; asc ;;
 1: len 6; hex 000000004fcc; asc O ;;
