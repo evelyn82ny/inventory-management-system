@@ -123,9 +123,10 @@ public void decreaseQuantity(Long id, Long quantity) {
 - X-Lock을 획득한 트랜잭션이 종료(commit or abort)해야 다른 트랜잭션이 락을 획득할 수 있으므로 동시성 문제 해결
 <br>
 
-하지만 또 다른 문제가 발생한다. 이미 X-Lock을 걸려있는 상태에서 다른 세션도 수정 작업을 한다면 X-Lock을 획득하기 위해 기다리므로 위와 같은 방식으로 많은 요청을 처리한다면 응답 속도가 상당히 늦어질 것이다.
+### 응답 속도 지연 문제 발생
 
-- 현재 MSA(MicroService Architecture)를 공부하는 중인데 주문 서비스, 결제 서비스, 고객 서비스로 분리해 분산 트랜잭션 처리를 지원하는 Saga 패턴과 이벤트 기반 비동기 통신을 적용하면 응답 속도 문제를 해결할 것이라 예상한다.
+- X-Lock을 걸려있는 상태에서 다른 세션도 수정 작업을 한다면 X-Lock을 획득하기 위해 기다리므로 위와 같은 방식으로 많은 요청을 처리한다면 응답 속도가 상당히 늦어질 것이라 예상
+- MSA: 주문 서비스와 재고 서비스로 분리해 분산 트랜잭션을 지원하는 Saga 패턴과 이벤트 기반 비동기 통신을 적용해 응답 속도를 개선하는 중
 
 <br>
 
@@ -237,6 +238,13 @@ Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
 
 *** WE ROLL BACK TRANSACTION (2)
 ```
+<br>
+
+# Solution: Pessimistic Lock 사용
+
+- Lost update 문제의 2번쩨 해결 방법인 [Pessimistic Lock 사용](#solution2-pessimistic-lock) 을 통해 Deadlock 해결
+- 주문을 생성하기 위해 ITEM 객체에 Pessimistic Lock을 획득하므로 여러 요청이 와도 순서대로 처리되어 Deadlock 문제가 발생하지 않음
+- 여러 요청을 순서대로 처리하므로 응답 속도가 늦어지는데 이를 해결하기 위해 주문 서비스와 재고 서비스로 분리하는 MSA로 전환하는 중
 
 <br>
 
