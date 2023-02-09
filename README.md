@@ -16,8 +16,11 @@
  
 - [Solution1: Java synchronized](#solution1-java-synchronized)
 - [Solution2: Pessimistic Lock](#solution2-pessimistic-lock)
+- [응답 속도 지연 문제 발생](#응답-속도-지연-문제-발생)
 
 ### ❗️[Concurrency Problem: Deadlock](#%EF%B8%8F-concurrency-problem-deadlock-발생)
+
+- [Solution: Pessimistic Lock](#solution-pessimistic-lock-사용)
 
 <br>
 
@@ -240,7 +243,7 @@ Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
 ```
 <br>
 
-# Solution: Pessimistic Lock 사용
+## Solution: Pessimistic Lock 사용
 
 - Lost update 문제의 2번쩨 해결 방법인 [Pessimistic Lock 사용](#solution2-pessimistic-lock) 을 통해 Deadlock 해결
 - 주문을 생성하기 위해 ITEM 객체에 Pessimistic Lock을 획득하므로 여러 요청이 와도 순서대로 처리되어 Deadlock 문제가 발생하지 않음
